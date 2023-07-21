@@ -1,15 +1,4 @@
 #######LIBRARIES#######
-#.libPaths('O:/_Rpackages')
-# install.packages('igraph', repos='https://cloud.r-project.org/')
-# install.packages('network', repos='https://cloud.r-project.org/')
-# install.packages('sna', repos='https://cloud.r-project.org/')
-# install.packages('dplyr', repos='https://cloud.r-project.org/')
-# install.packages('tibble', repos='https://cloud.r-project.org/')
-# install.packages('tidyr', repos='https://cloud.r-project.org/')
-# install.packages('tidyverse', repos='https://cloud.r-project.org/')
-# install.packages('haven', repos='https://cloud.r-project.org/')
-# install.packages('foreign', repos='https://cloud.r-project.org/')
-
 library(igraph)
 library(network)
 library(sna)
@@ -21,54 +10,10 @@ library(haven)
 # input Stata file
 library(foreign)
 
-
 suffix<-"_3_6_weekly"
-path<-"/project/6068332/dennisma/Data/processed_stata/weekly_3_6/"
+path<-"/project/{CENSORED FOR GITHUB}/dennisma/Data/processed_stata/weekly_3_6/"
       
 ######FUNCTIONS#######
-#ok so produce 1000 random graphs w/ degree dist input, then use mean coeff as null model:
-get_random_rc <-function(degree_distribution, min_deg) 
-{
-  # get the degree centrality totals for each addr:
-  rg.el<-get.edgelist(rg)
-  colnames(rg.el)<-c("addr1","addr2")
-  rg.df<-as.data.frame(rg.el)
-  
-  rg1<-rg.df %>%
-    group_by(addr1) %>%
-    summarise(Count1=n())
-  
-  rg2<-rg.df %>%
-    group_by(addr2) %>%
-    summarise(Count2=n())
-  
-  rg2<-rename(rg2, addr1=addr2)
-  #get to and from totals
-  rg.sums<-merge(rg1, rg2, by='addr1', all=TRUE)
-  rg.sums[is.na(rg.sums)]<-0
-  #combine
-  rg.sums$total<-rg.sums$Count1+rg.sums$Count2
-  #drop counts
-  rg.sums<-select(rg.sums,-c(Count1 , Count2))
-  rg.sums<-rename(rg.sums, total1=total)
-  rg.df<-merge(rg.df,rg.sums, by='addr1', all=TRUE)
-  #now merge the to addresses
-  rg.sums<-rename(rg.sums, total2=total1)
-  rg.sums<-rename(rg.sums, addr2=addr1)
-  rg.df<-merge(rg.df,rg.sums, by='addr2', all=TRUE)
-  return(subset(rg.df,total1>=min_deg & total2>=min_deg)) #this returns an edgelist w/ centralities for only the RC (subnetwork exceeding min_deg)
-}
-
-#returns a vector of rich club coeffs for a given degree_distribution and min_deg across runs
-get_null_rc <-function(degree_distribution, min_deg, runs=1000) {
-  sample_rc<-c() #fill this w/ the graphs
-  set.seed(123)
-  for (i in 1:runs) {
-    v1_random_net<-get_random_rc(degree_distribution, min_deg)
-    sample_rc<-c(sample_rc,get_rccoeff(v1_random_net))
-  }
-  return(as.numeric(sample_rc))
-}
 
 #returns the rich club coeff for a given input network (edgelist)
 get_rccoeff<-function(network) {
@@ -176,42 +121,18 @@ tplist<-unique(df_full$tp)
         Isolated = which(igraph::degree(gr.gr)==0)
         gr.gr=gr.gr-Isolated
         degree_dist<-igraph::degree(gr.gr) #get the degree distribution
-    #min_rob
+
     richonly<-subset(merged,total1>=minimum & total2>=minimum)
 
      rc_coeff<-get_rccoeff(richonly) #the un-normalized RC Coeff
- #this won't accept 0 as a degree value...which makes sense given the data; so figure out why there is 0 in the data
-     rc_null<-get_null_rc(degree_dist, minimum) #will need to convert from edgelist first for actual run
-     
-    #approach #1: use this as the null metric
-   mean_rc_null<-mean(rc_null)
-
- #need to be able to catch instances where mean_rc_null is NULL
-  if (is.na(mean_rc_null)) {
-    print("Null RC Coeff is NA")
-    rc_coeff_norm=rc_coeff
-    rc_coeff_pctl=1 #max it out I guess?
-      
-  }
-  else{
-    rc_coeff_pctl=100*ecdf(rc_null)(rc_coeff) #percentile
-    rc_coeff_norm=rc_coeff/mean_rc_null #now divide to get the normalized coefficient
-    #approach #2: detect where in the distribution the rccoeff lies
-    #RC coefficients
-    final$rc_raw[final$tp==i]<-rc_coeff
-    final$rc_cut[final$tp==i]<-minimum
-    final$rc_pctl[final$tp==i]<-rc_coeff_pctl
-    final$rc_denom[final$tp==i]<-mean_rc_null
-    final$rc_norm[final$tp==i]<-rc_coeff_norm
-  }
-
+ 
     #WRITE VALUES
     final$clustering[final$tp==i]<-clustering
     final$transitivity[final$tp==i]<-transitivity
     final$centralization[final$tp==i]<-centralization
-    final$size[final$tp==i]<-size #forgot this last time...adding now
-           final$rc_raw[final$tp==i]<-rc_coeff
-           final$rc_cut[final$tp==i]<-minimum
+    final$size[final$tp==i]<-size 
+    final$rc_raw[final$tp==i]<-rc_coeff
+    final$rc_cut[final$tp==i]<-minimum
   #now do this for each time period.
   }
 
